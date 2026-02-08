@@ -362,7 +362,8 @@ async function main() {
 
     case "done": {
       const idArg = args[1];
-      if (!idArg) {
+      // If no ID or ID starts with -- (a flag), show completed tasks
+      if (!idArg || idArg.startsWith("--")) {
         // Show completed tasks
         const limit = parseInt(getFlagValue("--limit") || "20", 10);
         const tasks = getCompleted(limit);
