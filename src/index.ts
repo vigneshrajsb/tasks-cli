@@ -197,11 +197,11 @@ async function main() {
       
       const task = createTask({
         title,
-        description,
-        due_date: dueDate,
-        due_time: dueTime,
+        description: description || undefined,
+        due_date: dueDate || undefined,
+        due_time: dueTime || undefined,
         tags: tags.length > 0 ? tags : undefined,
-        project,
+        project: project || undefined,
         priority,
       });
       
