@@ -1,0 +1,38 @@
+{
+  "name": "@vigneshrajsb/tasks-cli",
+  "version": "0.1.0",
+  "description": "A deterministic task management CLI with SQLite persistence",
+  "type": "module",
+  "bin": {
+    "tasks": "./src/index.ts"
+  },
+  "scripts": {
+    "dev": "bun run src/index.ts",
+    "test": "TASKS_TEST=1 bun test",
+    "build": "bun build src/index.ts --outdir dist --target node",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "tasks",
+    "todo",
+    "cli",
+    "productivity",
+    "sqlite"
+  ],
+  "author": "Vignesh Babu",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vigneshrajsb/tasks-cli.git"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

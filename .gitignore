@@ -1,0 +1,10 @@
+node_modules/
+dist/
+*.log
+.DS_Store
+
+# Test artifacts
+/tmp/
+
+# Local config (don't commit actual user data)
+# ~/.tasks/ is in home dir, not repo
