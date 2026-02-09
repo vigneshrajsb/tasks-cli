@@ -249,13 +249,13 @@ export function moveToInbox(id: number): Task | null {
 }
 
 /**
- * Mark a task as reminded today
+ * Mark a task as reminded (stores full datetime)
  */
 export function markReminded(id: number): void {
   const stmt = db.prepare(`
-    UPDATE tasks SET reminded_at = ? WHERE id = ?
+    UPDATE tasks SET reminded_at = datetime('now') WHERE id = ?
   `);
-  stmt.run(today(), id);
+  stmt.run(id);
 }
 
 /**
