@@ -522,6 +522,7 @@ async function main() {
       const tags = getFlagValues("--tag");
       const project = getFlagValue("--project");
       const priorityStr = getFlagValue("--priority");
+      const reminded = args.includes("--reminded");
       
       const updates: any = {};
       if (title) updates.title = title;
@@ -532,6 +533,11 @@ async function main() {
         if (priorityStr === "normal") updates.priority = 0;
         if (priorityStr === "high") updates.priority = 1;
         if (priorityStr === "urgent") updates.priority = 2;
+      }
+      
+      // Mark as reminded if flag is set
+      if (reminded) {
+        markReminded(id);
       }
       
       const task = updateTask(id, updates);
