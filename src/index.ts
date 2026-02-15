@@ -30,6 +30,26 @@ import {
 import type { Task } from "./tasks";
 import * as readline from "readline";
 
+// Recurring tasks
+import {
+  createRecurringTemplate,
+  getTemplateById,
+  updateTemplate,
+  deleteTemplate,
+  enableTemplate,
+  disableTemplate,
+  getAllTemplates,
+  getActiveTemplates,
+  formatRecurrence,
+  type RecurringTemplate,
+} from "./recurring";
+import {
+  generateTasksForTemplate,
+  generateAllTasks,
+  getTasksForTemplate,
+  skipTask,
+} from "./generation";
+
 // Initialize database
 initDb();
 
@@ -657,6 +677,269 @@ async function main() {
       break;
     }
 
+    // ============================================================
+    // RECURRING TASKS
+    // ============================================================
+    
+    case "recur": {
+      const subCommand = args[1] || "list";
+      
+      switch (subCommand) {
+        case "add": {
+          const title = args[2];
+          if (!title) {
+            console.error("Usage: tasks recur add \"title\" --every day|week|month|year [options]");
+            process.exit(1);
+          }
+          
+          const everyStr = getFlagValue("--every");
+          if (!everyStr) {
+            console.error("Missing --every (day, week, month, year, or '2 weeks')");
+            process.exit(1);
+          }
+          
+          // Parse --every value
+          let recurType: "daily" | "weekly" | "monthly" | "yearly";
+          let recurInterval = 1;
+          
+          const everyMatch = everyStr.match(/^(\d+)?\s*(day|week|month|year)s?$/i);
+          if (!everyMatch) {
+            console.error(`Invalid --every value: ${everyStr}`);
+            process.exit(1);
+          }
+          
+          if (everyMatch[1]) recurInterval = parseInt(everyMatch[1], 10);
+          const unit = everyMatch[2].toLowerCase();
+          
+          switch (unit) {
+            case "day": recurType = "daily"; break;
+            case "week": recurType = "weekly"; break;
+            case "month": recurType = "monthly"; break;
+            case "year": recurType = "yearly"; break;
+            default: recurType = "daily";
+          }
+          
+          const daysStr = getFlagValue("--days"); // mon,wed,fri
+          const dayOfMonth = getFlagValue("--day"); // 15
+          const timeStr = getFlagValue("--time");
+          const startStr = getFlagValue("--start") || today();
+          const endStr = getFlagValue("--end");
+          const tags = getFlagValues("--tag");
+          const project = getFlagValue("--project");
+          const priorityStr = getFlagValue("--priority");
+          
+          let priority = 0;
+          if (priorityStr === "high") priority = 1;
+          if (priorityStr === "urgent") priority = 2;
+          
+          const startDate = parseDate(startStr);
+          if (!startDate) {
+            console.error(`Could not parse start date: ${startStr}`);
+            process.exit(1);
+          }
+          
+          let endDate: string | undefined;
+          if (endStr) {
+            endDate = parseDate(endStr) || undefined;
+            if (!endDate) {
+              console.error(`Could not parse end date: ${endStr}`);
+              process.exit(1);
+            }
+          }
+          
+          let dueTime: string | undefined;
+          if (timeStr) {
+            dueTime = parseTime(timeStr) || undefined;
+          }
+          
+          const template = createRecurringTemplate({
+            title,
+            recur_type: recurType,
+            recur_interval: recurInterval,
+            recur_days: daysStr || undefined,
+            recur_day_of_month: dayOfMonth ? parseInt(dayOfMonth, 10) : undefined,
+            start_date: startDate,
+            end_date: endDate,
+            due_time: dueTime,
+            tags: tags.length > 0 ? tags : undefined,
+            project: project || undefined,
+            priority,
+          });
+          
+          if (jsonOutput) {
+            outputJson(template);
+          } else {
+            console.log(`✓ Created recurring template [${template.id}]`);
+            console.log(`  ${template.title} - ${formatRecurrence(template)}`);
+            if (template.due_time) console.log(`  Time: ${formatTime(template.due_time)}`);
+          }
+          break;
+        }
+        
+        case "list": {
+          const templates = showAll ? getAllTemplates() : getActiveTemplates();
+          
+          if (jsonOutput) {
+            outputJson(templates);
+          } else {
+            console.log("\n🔁 RECURRING TEMPLATES");
+            if (templates.length === 0) {
+              console.log("  (none)");
+            } else {
+              for (const t of templates) {
+                const status = t.enabled ? "" : " [disabled]";
+                const time = t.due_time ? ` @ ${formatTime(t.due_time)}` : "";
+                console.log(`  [${t.id}] ${t.title} - ${formatRecurrence(t)}${time}${status}`);
+              }
+            }
+          }
+          break;
+        }
+        
+        case "edit": {
+          const id = parseInt(args[2], 10);
+          if (!id) {
+            console.error("Usage: tasks recur edit <id> [options]");
+            process.exit(1);
+          }
+          
+          const updates: any = {};
+          
+          const title = getFlagValue("--title");
+          if (title) updates.title = title;
+          
+          const timeStr = getFlagValue("--time");
+          if (timeStr) updates.due_time = parseTime(timeStr);
+          
+          const daysStr = getFlagValue("--days");
+          if (daysStr) updates.recur_days = daysStr;
+          
+          const dayOfMonth = getFlagValue("--day");
+          if (dayOfMonth) updates.recur_day_of_month = parseInt(dayOfMonth, 10);
+          
+          const template = updateTemplate(id, updates);
+          if (!template) {
+            console.error(`Template not found: ${id}`);
+            process.exit(1);
+          }
+          
+          if (jsonOutput) {
+            outputJson(template);
+          } else {
+            console.log(`✓ Updated template [${template.id}]`);
+            console.log(`  ${template.title} - ${formatRecurrence(template)}`);
+          }
+          break;
+        }
+        
+        case "disable": {
+          const id = parseInt(args[2], 10);
+          if (!id) {
+            console.error("Usage: tasks recur disable <id>");
+            process.exit(1);
+          }
+          
+          const template = disableTemplate(id);
+          if (!template) {
+            console.error(`Template not found: ${id}`);
+            process.exit(1);
+          }
+          
+          if (jsonOutput) {
+            outputJson(template);
+          } else {
+            console.log(`✓ Disabled template [${template.id}] ${template.title}`);
+          }
+          break;
+        }
+        
+        case "enable": {
+          const id = parseInt(args[2], 10);
+          if (!id) {
+            console.error("Usage: tasks recur enable <id>");
+            process.exit(1);
+          }
+          
+          const template = enableTemplate(id);
+          if (!template) {
+            console.error(`Template not found: ${id}`);
+            process.exit(1);
+          }
+          
+          if (jsonOutput) {
+            outputJson(template);
+          } else {
+            console.log(`✓ Enabled template [${template.id}] ${template.title}`);
+          }
+          break;
+        }
+        
+        case "delete": {
+          const id = parseInt(args[2], 10);
+          if (!id) {
+            console.error("Usage: tasks recur delete <id>");
+            process.exit(1);
+          }
+          
+          const template = getTemplateById(id);
+          if (!template) {
+            console.error(`Template not found: ${id}`);
+            process.exit(1);
+          }
+          
+          deleteTemplate(id);
+          
+          if (jsonOutput) {
+            outputJson({ deleted: true, id });
+          } else {
+            console.log(`✓ Deleted template [${id}] ${template.title}`);
+          }
+          break;
+        }
+        
+        case "generate": {
+          const days = parseInt(getFlagValue("--days") || "14", 10);
+          const result = generateAllTasks(days);
+          
+          if (jsonOutput) {
+            outputJson(result);
+          } else {
+            console.log(`✓ Generated ${result.tasksCreated} tasks from ${result.templatesProcessed} templates`);
+          }
+          break;
+        }
+        
+        default:
+          console.error(`Unknown recur subcommand: ${subCommand}`);
+          console.error("Usage: tasks recur [add|list|edit|disable|enable|delete|generate]");
+          process.exit(1);
+      }
+      break;
+    }
+    
+    case "skip": {
+      const id = parseInt(args[1], 10);
+      if (!id) {
+        console.error("Usage: tasks skip <id>");
+        process.exit(1);
+      }
+      
+      const task = getTaskById(id);
+      if (!task) {
+        console.error(`Task not found: ${id}`);
+        process.exit(1);
+      }
+      
+      skipTask(id);
+      
+      if (jsonOutput) {
+        outputJson({ skipped: true, id });
+      } else {
+        console.log(`✓ Skipped [${id}] ${task.title}`);
+      }
+      break;
+    }
+
     case "help":
     default: {
       console.log(`
@@ -689,12 +972,30 @@ USAGE:
   
   tasks edit <id> [options]       Edit a task
   tasks delete <id>               Delete a task
+  tasks skip <id>                 Skip a recurring task instance
   
   tasks tag <tag>                 Filter by tag
   tasks search <query>            Search tasks
   tasks remind                    Tasks needing reminders
   tasks stats                     Show statistics
   tasks config                    Show config
+
+RECURRING TASKS:
+  tasks recur                     List recurring templates
+  tasks recur add "title" --every day|week|month|year [options]
+  tasks recur edit <id> [options] Edit a template
+  tasks recur disable <id>        Disable a template
+  tasks recur enable <id>         Enable a template
+  tasks recur delete <id>         Delete a template
+  tasks recur generate            Generate tasks (14 days)
+
+RECURRING OPTIONS:
+  --every <interval>  Frequency: day, week, month, year, "2 weeks"
+  --days mon,wed,fri  Specific weekdays (weekly only)
+  --day 15            Day of month (monthly only)
+  --time 9am          Due time for each occurrence
+  --start 2026-02-15  Start date (default: today)
+  --end 2026-12-31    End date (optional)
 
 OPTIONS:
   --due <date>      Due date (today, tomorrow, monday, 2026-02-15, +3d)
@@ -705,14 +1006,19 @@ OPTIONS:
   -d, --description Description text
   --json            Output as JSON
   --limit <n>       Limit results
+  --all             Include disabled (for recur list)
 
 EXAMPLES:
   tasks add "Buy groceries"
   tasks add "Review PR" --due today --tag work
   tasks add "Call dentist" --due tomorrow --time 2pm
   tasks move 42 --date friday
-  tasks move 42 --soon
   tasks done 42
+  
+  tasks recur add "Take vitamins" --every day --time 9am
+  tasks recur add "Team standup" --every week --days mon,tue,wed,thu,fri --time 10am
+  tasks recur add "Pay rent" --every month --day 1
+  tasks recur add "Annual review" --every year --start 2026-12-15
 `);
       break;
     }

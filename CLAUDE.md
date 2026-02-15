@@ -2,6 +2,29 @@
 
 Task management CLI with SQLite backend. Deterministic, scriptable, AI-friendly.
 
+## ⚠️ CRITICAL: Data Safety
+
+**ALWAYS backup before testing features that modify/delete data:**
+
+```bash
+cp ~/.tasks/tasks.db ~/.tasks/tasks.db.bak
+```
+
+**For development/testing, use a test database:**
+
+```bash
+TASKS_TEST=1 bun run src/index.ts <command>  # Uses in-memory DB
+# OR copy to temp location for manual testing
+cp ~/.tasks/tasks.db /tmp/tasks-test.db
+```
+
+**Destructive operations (be careful):**
+- `tasks delete <id>` - Permanently deletes task
+- `tasks skip <id>` - Deletes recurring task instance
+- `tasks recur delete <id>` - Deletes recurring template
+
+**Lesson learned:** On 2026-02-15, all user tasks were accidentally deleted during feature testing because manual CLI commands hit the production database. Always backup first!
+
 ## For Agents
 
 Read **AGENTS.md** for complete usage patterns.

@@ -188,6 +188,44 @@ tasks add "Learn Rust" --tag someday
 # Response: "Added 'Learn Rust' to your someday list."
 ```
 
+## ⚠️ Data Safety Guardrails
+
+**CRITICAL: Backup before destructive operations!**
+
+```bash
+# ALWAYS backup before testing new features or bulk operations
+cp ~/.tasks/tasks.db ~/.tasks/tasks.db.bak
+
+# Restore if something goes wrong
+cp ~/.tasks/tasks.db.bak ~/.tasks/tasks.db
+```
+
+**Destructive commands (use with caution):**
+
+| Command | Risk | Recovery |
+|---------|------|----------|
+| `tasks delete <id>` | Permanent | None without backup |
+| `tasks skip <id>` | Deletes recurring instance | None without backup |
+| `tasks recur delete <id>` | Deletes template | Generated tasks remain |
+
+**Testing new features:**
+
+1. **Backup first:** `cp ~/.tasks/tasks.db ~/.tasks/tasks.db.bak`
+2. **Use test mode for unit tests:** `TASKS_TEST=1 bun test` (uses in-memory DB)
+3. **For manual CLI testing:** Work on a copy, not production
+   ```bash
+   cp ~/.tasks/tasks.db /tmp/tasks-test.db
+   # Then modify code to use /tmp/tasks-test.db
+   ```
+4. **Verify before bulk deletes:** Use `--json` to inspect what will be affected
+
+**What NOT to do:**
+- ❌ Run manual CLI delete commands during feature development
+- ❌ Test destructive features on production database
+- ❌ Assume "it's just test data" - user data is precious
+
+**Lesson learned (2026-02-15):** All user tasks were accidentally deleted during recurring tasks feature testing. Manual CLI commands (`tasks skip`, `tasks recur delete`) operated on the production database instead of a test copy.
+
 ## Best Practices
 
 1. **Use --json** for parsing task data
@@ -196,6 +234,7 @@ tasks add "Learn Rust" --tag someday
 4. **Infer priority** - "urgent", "important", "asap" → `--priority urgent`
 5. **Keep titles concise** - action-oriented verbs
 6. **Use tags** for categorization: `--tag work --tag meeting`
+7. **Backup before bulk operations** - always
 
 ## Data Location
 

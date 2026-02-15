@@ -85,13 +85,52 @@ export function initDb() {
       reminded_at TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      completed_at TEXT
+      completed_at TEXT,
+      recurring_id INTEGER
     )
   `);
 
-  // Create indexes
+  // Create indexes for base columns
   db.run(`CREATE INDEX IF NOT EXISTS idx_tasks_due ON tasks(due_date)`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_tasks_completed ON tasks(completed_at)`);
+
+  // Recurring templates table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS recurring_templates (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      description TEXT,
+      due_time TEXT,
+      tags TEXT,
+      project TEXT,
+      priority INTEGER DEFAULT 0,
+      
+      recur_type TEXT NOT NULL,
+      recur_interval INTEGER DEFAULT 1,
+      recur_days TEXT,
+      recur_day_of_month INTEGER,
+      
+      start_date TEXT NOT NULL,
+      end_date TEXT,
+      
+      last_generated TEXT,
+      enabled INTEGER DEFAULT 1,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Migration: add recurring_id to existing tasks table if missing
+  // Check if column exists first
+  const tableInfo = db.prepare("PRAGMA table_info(tasks)").all() as Array<{name: string}>;
+  const hasRecurringId = tableInfo.some(col => col.name === "recurring_id");
+  
+  if (!hasRecurringId) {
+    db.run(`ALTER TABLE tasks ADD COLUMN recurring_id INTEGER`);
+  }
+  
+  // Create index for recurring_id (after ensuring column exists)
+  db.run(`CREATE INDEX IF NOT EXISTS idx_tasks_recurring ON tasks(recurring_id)`);
 }
 
 export function getDbPath(): string {
