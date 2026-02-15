@@ -120,6 +120,41 @@ tasks config              # show db path
 
 See **AGENTS.md** for detailed agent usage.
 
+## Development
+
+### Local Development
+
+```bash
+cd ~/github/vigneshrajsb/tasks-cli
+bun run src/index.ts <command>    # run locally
+bun test                          # run tests
+```
+
+### Release Process
+
+1. **Bump version & tag:**
+   ```bash
+   npm version patch|minor|major -m "Release %s - description"
+   ```
+
+2. **Push to GitHub (triggers npm publish):**
+   ```bash
+   git push && git push --tags
+   ```
+
+3. **Update global install on this machine:**
+   ```bash
+   npm install -g @vigneshrajsb/tasks-cli@latest
+   ```
+
+4. **Verify:**
+   ```bash
+   npm list -g @vigneshrajsb/tasks-cli
+   tasks help | head -20
+   ```
+
+> ⚠️ **Don't forget step 3!** The dashboard and heartbeat use the global `tasks` command, not the local repo.
+
 ## License
 
 MIT

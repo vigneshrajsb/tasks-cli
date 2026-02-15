@@ -25,6 +25,26 @@ cp ~/.tasks/tasks.db /tmp/tasks-test.db
 
 **Lesson learned:** On 2026-02-15, all user tasks were accidentally deleted during feature testing because manual CLI commands hit the production database. Always backup first!
 
+## Release Process
+
+When releasing a new version:
+
+```bash
+# 1. Bump version (creates commit + tag)
+npm version patch|minor|major -m "Release %s - description"
+
+# 2. Push (GitHub Actions publishes to npm)
+git push && git push --tags
+
+# 3. UPDATE GLOBAL INSTALL (don't forget!)
+npm install -g @vigneshrajsb/tasks-cli@latest
+
+# 4. Verify
+npm list -g @vigneshrajsb/tasks-cli
+```
+
+> ⚠️ Step 3 is critical! Dashboard and heartbeat use the global `tasks` command.
+
 ## For Agents
 
 Read **AGENTS.md** for complete usage patterns.
